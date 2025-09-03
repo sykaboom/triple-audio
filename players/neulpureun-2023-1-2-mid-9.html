@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2023 늘푸른고 1-2-M 9번 - Math Player</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$']], displayMath: [['$$','$$']], packages: {'[+]': ['ams']} },
+      svg: { fontCache: 'global' },
+      startup: { typeset: false }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+    :root { 
+      --solution-font-size: 16px; --dracula-bg: #282a36; --dracula-panel: #21222c; 
+      --dracula-selection: #44475a; --dracula-foreground: #f8f8f2; --dracula-comment: #6272a4; 
+      --dracula-cyan: #8be9fd; --dracula-purple: #bd93f9; --dracula-yellow: #f1fa8c;
+      --highlight-bg: rgba(241, 250, 140, 0.25); --highlight-graph-color: var(--dracula-yellow);
+    }
+    html, body { 
+      width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--dracula-bg); 
+      display: flex; justify-content: center; align-items: center; 
+      font-family: 'Noto Sans KR', sans-serif; color: var(--dracula-foreground); 
+    }
+    #main-container { 
+      width: 95vw; height: calc(95vw * 9 / 16); max-width: calc(95vh * 16 / 9); max-height: 95vh; 
+      display: flex; flex-direction: column; background: var(--dracula-panel); 
+      border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+    }
+    #content-container { 
+      flex-grow: 1; display: grid; grid-template-columns: 4fr 6fr; 
+      padding: 1.2vw 1.5vw; gap: 1.5vw; min-height: 0; 
+    }
+    .panel { 
+      background: var(--dracula-bg); border-radius: 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); 
+      padding: 1.2vw; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .panel-title { 
+      text-transform: uppercase; color: var(--dracula-purple); font-weight: 700; 
+      font-size: calc(var(--solution-font-size) * 1.1); margin: 0 0 0.6em; padding-bottom: 0.35em; 
+      border-bottom: 1px solid var(--dracula-selection); flex-shrink: 0;
+    }
+    #graph-wrapper, #solution-wrapper { flex-grow: 1; min-height: 0; }
+    #solution-wrapper { overflow-y: auto; padding-right: 10px; }
+    canvas { display: block; width: 100%; height: 100%; object-fit: contain;}
+    
+    .solution-step { 
+      padding: 0.1em 0.4em; margin: .3em 0; border-radius: 4px;
+      line-height: 1.6; font-size: var(--solution-font-size); 
+      transition: background-color 0.3s ease-in-out;
+    }
+    .solution-step.is-title { padding-left: 0; margin-top: 0.8em; color: var(--dracula-cyan); font-weight: 700; font-size: calc(var(--solution-font-size) * 1.05); }
+    .solution-step.highlighted { background-color: var(--highlight-bg); }
+
+    #controls-container { 
+      flex-shrink: 0; height: clamp(55px, 11vh, 75px); background: rgba(33,34,44,0.8); 
+      border-top: 1px solid var(--dracula-selection); padding: 0 1.5vw; 
+      display: flex; justify-content: center; align-items: center; 
+    }
+    #player-controls { display: flex; align-items: center; width: 100%; gap: 1vw; }
+    #play-pause-btn { background: transparent; border: none; color: white; font-size: clamp(22px, 4vh, 32px); cursor: pointer; padding: 0; width: 35px; text-align: center;}
+    #timeline { flex-grow: 1; height: 8px; background: var(--dracula-selection); border-radius: 4px; cursor: pointer; position: relative;}
+    #progress-bar { width: 0%; height: 100%; background: var(--dracula-purple); border-radius: 4px; }
+    #time-display { font-size: clamp(12px, 2vh, 16px); color: var(--dracula-comment); min-width: 100px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="main-container">
+    <div id="content-container">
+      <div id="graph-panel" class="panel"><h2 class="panel-title">Visuals</h2><div id="graph-wrapper"><canvas id="canvas"></canvas></div></div>
+      <div id="solution-panel" class="panel"><h2 class="panel-title">Solution</h2><div id="solution-wrapper"></div></div>
+    </div>
+    <div id="controls-container"><div id="player-controls"><button id="play-pause-btn">▶</button><div id="timeline"><div id="progress-bar"></div></div><div id="time-display">0:00 / 0:00</div></div></div>
+    <audio id="audio-player" preload="auto"></audio>
+  </div>
+
+<script>
+// ===================================================================================
+//                              DATA INJECTION POINT
+// ===================================================================================
+const problemData = {
+  "metadata": {
+    "title": "2023 늘푸른고 1-2-M 9번",
+    "problemId": "neulpureun-2023-1-2-mid-9",
+    "language": "ko-KR",
+    "source": "2023학년도 늘푸른고등학교 1학년 2학기 중간고사",
+    "curriculum": [
+      "공통수학2",
+      "평면좌표와 직선의 방정식",
+      "도형의 이동"
+    ],
+    "difficulty": "상"
+  },
+  "scenes": [
+    {
+      "scene_id": 1,
+      "solution_steps": [
+        {
+          "id": "sol-1-title",
+          "latex": "1. 문제 분석 및 좌표 설정",
+          "is_title": true
+        },
+        {
+          "id": "sol-1-desc",
+          "latex": "정사각형 OABC와 주어진 점들의 좌표를 설정합니다."
+        },
+        {
+          "id": "sol-1-coords-OABC",
+          "latex": "$\\mathrm{O}(0,0), \\mathrm{A}(18,0), \\mathrm{B}(18,18), \\mathrm{C}(0,18)$"
+        },
+        {
+          "id": "sol-1-coords-F",
+          "latex": "점 F는 선분 OA 위의 점이므로 $\\mathrm{F}(10,0)$ 입니다."
+        },
+        {
+          "id": "sol-1-coords-DE",
+          "latex": "점 D, E는 내분점이므로, 선분 DE는 직선 $y=12$ 위에 있습니다."
+        }
+      ],
+      "graph_elements": [
+        {
+          "id": "graph-1-axes",
+          "type": "drawAxes",
+          "args": [
+            0,
+            20,
+            0,
+            20,
+            2,
+            "x",
+            "y",
+            "#6272a4"
+          ]
+        },
+        {
+          "id": "graph-1-box",
+          "type": "drawPolygon",
+          "args": [
+            [
+              [
+                0,
+                0
+              ],
+              [
+                18,
+                0
+              ],
+              [
+                18,
+                18
+              ],
+              [
+                0,
+                18
+              ]
+            ],
+            "#44475a",
+            "#6272a4",
+            0.05
+          ]
+        },
+        {
+          "id": "graph-1-labels-OABC",
+          "type": "drawMathText",
+          "args": [
+            "\\mathrm{O}",
+            -1,
+            -1,
+            "#f8f8f2",
+            1
+          ]
+        },
+        {
+          "id": "graph-1-labels-A",
+          "type": "drawMathText",
+          "args": [
+            "\\mathrm{A}",
+            18,
+            -1,
+            "#f8f8f2",
+            1
+          ]
+        },
+        {
+          "id": "graph-1-labels-B",
+          "type": "drawMathText",
+          "args": [
+            "\\mathrm{B}",
+            18,
+            18.5,
+            "#f8f8f2",
+            1
+          ]
+        },
+        {
+          "id": "graph-1-labels-C",
+          "type": "drawMathText",
+          "args": [
+            "\\mathrm{C}",
+            -1,
+            18.5,
+            "#f8f8f2",
+            1
+          ]
+        },
+        {
+          "id": "graph-1-point-F",
+          "type": "drawPoint",
+          "args": [
+            10,
+            0,
+            "#8be9fd",
+            0.25
+          ]
+        },
+        {
+          "id": "graph-1-label-F",
+          "type": "drawMathText",
+          "args": [
+            "\\mathrm{F}",
+            10,
+            -1,
+            "#8be9fd",
+            1
+          ]
+        },
+        {
+          "id": "graph-1-line-DE",
+          "type": "drawLine",
+          "args": [
+            0,
+            12,
+            18,
+            12,
+            "#50fa7b",
+            0.15
+          ]
+        },
+        {
+          "id": "graph-1-label-D",
+          "type": "drawMathText",
+          "args": [
+            "\\mathrm{D}",
+            -1,
+            12,
+            "#50fa7b",
+            1
+          ]
+        },
+        {
+          "id": "graph-1-label-E",
+          "type": "drawMathText",
+          "args": [
+            "\\mathrm{E}",
+            18,
+            12,
+            "#50fa7b",
+            1
+          ]
+        }
+      ],
+      "timedEvents": [
+        {
+          "startTime": 3.41,
+          "endTime": 6.24,
+          "highlight_ids": [
+            "sol-1-title",
+            "sol-1-desc"
+          ]
+        },
+        {
+          "startTime": 6.24,
+          "endTime": 9.18,
+          "highlight_ids": [
+            "sol-1-coords-OABC",
+            "graph-1-box",
+            "graph-1-labels-OABC",
+            "graph-1-labels-A",
+            "graph-1-labels-B",
+            "graph-1-labels-C"
+          ]
+        },
+        {
+          "startTime": 9.18,
+          "endTime": 11.41,
+          "highlight_ids": [
+            "sol-1-coords-F",
+            "graph-1-point-F",
+            "graph-1-label-F"
+          ]
+        },
+        {
+          "startTime": 11.41,
+          "endTime": 13.76,
+          "highlight_ids": [
+            "sol-1-coords-DE",
+            "graph-1-line-DE",
+            "graph-1-label-D",
+            "graph-1-label-E"
+          ]
+        }
+      ],
+      "clean_script": "그림과 같이 한 변의 길이가 18인 정사각형 모양의 종이가 있습니다. 먼저 문제의 조건에 맞게 각 점의 좌표를 설정하겠습니다. 정사각형의 꼭짓점은 각각 원점 오, 에이, 비, 씨 입니다. 점 에프는 오에이 위의 점으로 십 콤마 영이고, 선분 디이는 와이는 십이 직선 위에 위치합니다."
+    },
+    {
+      "scene_id": 2,
+      "solution_steps": [
+        {
+          "id": "sol-2-title",
+          "latex": "2. 접기 변환의 이해",
+          "is_title": true
+        },
+        {
+          "id": "sol-2-desc",
+          "latex": "선분 PQ를 따라 접으면 점 O는 O'로, 점 F는 F'로 이동합니다."
+        },
+        {
+          "id": "sol-2-coords-Oprime",
+          "latex": "점 $\\mathrm{O'}$는 선분 BC ($y=18$) 위에 있으므로 $\\mathrm{O'}(a, 18)$"
+        },
+        {
+          "id": "sol-2-coords-Fprime",
+          "latex": "점 $\\mathrm{F'}$는 선분 DE ($y=12$) 위에 있으므로 $\\mathrm{F'}(b, 12)$"
+        },
+        {
+          "id": "sol-2-bisector",
+          "latex": "접는 선 PQ는 선분 OO'과 선분 FF'의 수직이등분선입니다."
+        }
+      ],
+      "graph_elements": [
+        {
+          "id": "graph-2-base-axes",
+          "type": "drawAxes",
+          "args": [
+            0,
+            20,
+            0,
+            20,
+            2,
+            "x",
+            "y",
+            "#6272a4"
+          ]
+        },
+        {
+          "id": "graph-2-base-box",
+          "type": "drawPolygon",
+          "args": [
+            [
+              [
+                0,
+                0
+              ],
+              [
+                18,
+                0
+              ],
+              [
+                18,
+                18
+              ],
+              [
+                0,
+                18
+              ]
+            ],
+            "#44475a",
+            "#6272a4",
+            0.05
+          ]
+        },
+        {
+          "id": "graph-2-base-DE",
+          "type": "drawLine",
+          "args": [
+            0,
+            12,
+            18,
+            12,
+            "#50fa7b",
+            0.1
+          ]
+        },
+        {
+          "id": "graph-2-point-O",
+          "type": "drawPoint",
+          "args": [
+            0,
+            0,
+            "#f1fa8c",
+            0.25
+          ]
+        },
+        {
+          "id": "graph-2-point-F",
+          "type": "drawPoint",
+          "args": [
+            10,
+            0,
+            "#8be9fd",
+            0.25
+          ]
+        },
+        {
+          "id": "graph-2-point-Oprime",
+          "type": "drawPoint",
+          "args": [
+            6,
+            18,
+            "#ff79c6",
+            0.25
+          ]
+        },
+        {
+          "id": "graph-2-label-Oprime",
+          "type": "drawMathText",
+          "args": [
+            "\\mathrm{O'}(a,18)",
+            6,
+            19,
+            "#ff79c6",
+            1
+          ]
+        },
+        {
+          "id": "graph-2-point-Fprime",
+          "type": "drawPoint",
+          "args": [
+            14,
+            12,
+            "#ffb86c",
+            0.25
+          ]
+        },
+        {
+          "id": "graph-2-label-Fprime",
+          "type": "drawMathText",
+          "args": [
+            "\\mathrm{F'}(b,12)",
+            14,
+            11,
+            "#ffb86c",
+            1
+          ]
+        },
+        {
+          "id": "graph-2-line-OOprime",
+          "type": "drawLine",
+          "args": [
+            0,
+            0,
+            6,
+            18,
+            "#ff79c6",
+            0.1,
+            true
+          ]
+        },
+        {
+          "id": "graph-2-line-FFprime",
+          "type": "drawLine",
+          "args": [
+            10,
+            0,
+            14,
+            12,
+            "#ffb86c",
+            0.1,
+            true
+          ]
+        }
+      ],
+      "timedEvents": [
+        {
+          "startTime": 0,
+          "endTime": 4.71,
+          "highlight_ids": [
+            "sol-2-title",
+            "sol-2-desc"
+          ]
+        },
+        {
+          "startTime": 4.71,
+          "endTime": 8.47,
+          "highlight_ids": [
+            "sol-2-coords-Oprime",
+            "graph-2-point-Oprime",
+            "graph-2-label-Oprime"
+          ]
+        },
+        {
+          "startTime": 8.47,
+          "endTime": 11.88,
+          "highlight_ids": [
+            "sol-2-coords-Fprime",
+            "graph-2-point-Fprime",
+            "graph-2-label-Fprime"
+          ]
+        },
+        {
+          "startTime": 11.88,
+          "endTime": 17.41,
+          "highlight_ids": [
+            "sol-2-bisector",
+            "graph-2-line-OOprime",
+            "graph-2-line-FFprime"
+          ]
+        }
+      ],
+      "clean_script": "종이를 선분 피큐를 따라 접으면 점 오는 오프라임으로, 점 에프는 에프프라임으로 옮겨집니다. 이때 오프라임은 선분 비씨 위에 있으므로 좌표를 에이 콤마 십팔로 둘 수 있고, 에프프라임은 선분 디이 위에 있으므로 비 콤마 십이로 둘 수 있습니다. 가장 중요한 성질은, 접는 선 피큐는 선분 오오프라임과 에프에프프라임의 공통 수직이등분선이라는 것입니다."
+    },
+    {
+      "scene_id": 3,
+      "solution_steps": [
+        {
+          "id": "sol-3-title",
+          "latex": "3. 좌표 구하기 (1) - 길이 보존",
+          "is_title": true
+        },
+        {
+          "id": "sol-3-desc",
+          "latex": "접어도 두 점 사이의 거리는 변하지 않습니다. 즉, $\\overline{OF} = \\overline{O'F'}$ 입니다."
+        },
+        {
+          "id": "sol-3-dist-OF",
+          "latex": "$\\overline{OF}^2 = (10-0)^2 + (0-0)^2 = 100$"
+        },
+        {
+          "id": "sol-3-dist-OprimeFprime",
+          "latex": "$\\overline{O'F'}^2 = (b-a)^2 + (12-18)^2 = (b-a)^2 + 36$"
+        },
+        {
+          "id": "sol-3-eq1",
+          "latex": "$(b-a)^2 + 36 = 100 \\implies (b-a)^2 = 64 \\implies b-a = \\pm 8$"
+        }
+      ],
+      "graph_elements": [
+        {
+          "id": "graph-3-base-axes",
+          "type": "drawAxes",
+          "args": [
+            0,
+            20,
+            0,
+            20,
+            2,
+            "x",
+            "y",
+            "#6272a4"
+          ]
+        },
+        {
+          "id": "graph-3-line-OF",
+          "type": "drawLine",
+          "args": [
+            0,
+            0,
+            10,
+            0,
+            "#bd93f9",
+            0.2
+          ]
+        },
+        {
+          "id": "graph-3-label-OF",
+          "type": "drawMathText",
+          "args": [
+            "\\overline{OF}",
+            5,
+            -1,
+            "#bd93f9",
+            1
+          ]
+        },
+        {
+          "id": "graph-3-line-OprimeFprime",
+          "type": "drawLine",
+          "args": [
+            6,
+            18,
+            14,
+            12,
+            "#bd93f9",
+            0.2
+          ]
+        },
+        {
+          "id": "graph-3-label-OprimeFprime",
+          "type": "drawMathText",
+          "args": [
+            "\\overline{O'F'}",
+            10,
+            15.5,
+            "#bd93f9",
+            1
+          ]
+        }
+      ],
+      "timedEvents": [
+        {
+          "startTime": 0,
+          "endTime": 4.71,
+          "highlight_ids": [
+            "sol-3-title",
+            "sol-3-desc"
+          ]
+        },
+        {
+          "startTime": 4.71,
+          "endTime": 6.47,
+          "highlight_ids": [
+            "sol-3-dist-OF",
+            "graph-3-line-OF"
+          ]
+        },
+        {
+          "startTime": 6.47,
+          "endTime": 10.82,
+          "highlight_ids": [
+            "sol-3-dist-OprimeFprime",
+            "graph-3-line-OprimeFprime"
+          ]
+        },
+        {
+          "startTime": 10.82,
+          "endTime": 15.65,
+          "highlight_ids": [
+            "sol-3-eq1"
+          ]
+        }
+      ],
+      "clean_script": "좌표를 구하기 위해 두 가지 성질을 이용합니다. 첫째, 접기 전후 두 점 사이의 거리는 같습니다. 선분 오에프의 길이 제곱은 백이고, 선분 오프라임 에프프라임의 길이 제곱은 비 마이너스 에이의 제곱 더하기 삼십육입니다. 두 값이 같으므로, 비 마이너스 에이는 플러스 또는 마이너스 팔이라는 첫 번째 관계식을 얻습니다."
+    },
+    {
+      "scene_id": 4,
+      "solution_steps": [
+        {
+          "id": "sol-4-title",
+          "latex": "3. 좌표 구하기 (2) - 평행선",
+          "is_title": true
+        },
+        {
+          "id": "sol-4-desc",
+          "latex": "두 선분 OO'과 FF'는 공통 수직이등분선(PQ)을 가지므로 서로 평행합니다."
+        },
+        {
+          "id": "sol-4-slope-OOprime",
+          "latex": "(OO'의 기울기) $= \\frac{18-0}{a-0} = \\frac{18}{a}$"
+        },
+        {
+          "id": "sol-4-slope-FFprime",
+          "latex": "(FF'의 기울기) $= \\frac{12-0}{b-10} = \\frac{12}{b-10}$"
+        },
+        {
+          "id": "sol-4-eq2",
+          "latex": "$\\frac{18}{a} = \\frac{12}{b-10} \\implies 3(b-10) = 2a \\implies 3b - 2a = 30$"
+        }
+      ],
+      "graph_elements": [
+        {
+          "id": "graph-4-base-axes",
+          "type": "drawAxes",
+          "args": [
+            0,
+            20,
+            0,
+            20,
+            2,
+            "x",
+            "y",
+            "#6272a4"
+          ]
+        },
+        {
+          "id": "graph-4-line-OOprime",
+          "type": "drawLine",
+          "args": [
+            0,
+            0,
+            6,
+            18,
+            "#ff79c6",
+            0.2
+          ]
+        },
+        {
+          "id": "graph-4-line-FFprime",
+          "type": "drawLine",
+          "args": [
+            10,
+            0,
+            14,
+            12,
+            "#ffb86c",
+            0.2
+          ]
+        },
+        {
+          "id": "graph-4-label-parallel",
+          "type": "drawMathText",
+          "args": [
+            "\\overline{OO'} // \\overline{FF'}",
+            8,
+            5,
+            "#f8f8f2",
+            1.2
+          ]
+        }
+      ],
+      "timedEvents": [
+        {
+          "startTime": 0,
+          "endTime": 4.71,
+          "highlight_ids": [
+            "sol-4-title",
+            "sol-4-desc",
+            "graph-4-label-parallel"
+          ]
+        },
+        {
+          "startTime": 6.82,
+          "endTime": 9.06,
+          "highlight_ids": [
+            "sol-4-slope-OOprime",
+            "graph-4-line-OOprime"
+          ]
+        },
+        {
+          "startTime": 9.06,
+          "endTime": 12.12,
+          "highlight_ids": [
+            "sol-4-slope-FFprime",
+            "graph-4-line-FFprime"
+          ]
+        },
+        {
+          "startTime": 12.12,
+          "endTime": 15.53,
+          "highlight_ids": [
+            "sol-4-eq2"
+          ]
+        }
+      ],
+      "clean_script": "둘째, 두 선분 오오프라임과 에프에프프라임은 같은 직선 피큐에 수직이므로 서로 평행합니다. *따라서 두 선분의 기울기는 같습니다.* 오오프라임의 기울기는 에이 분의 십팔이고, 에프에프프라임의 기울기는 비 마이너스 십 분의 십이입니다. 두 기울기가 같다는 식을 정리하면 두 번째 관계식을 얻을 수 있습니다."
+    },
+    {
+      "scene_id": 5,
+      "solution_steps": [
+        {
+          "id": "sol-5-title",
+          "latex": "4. 연립방정식 풀이",
+          "is_title": true
+        },
+        {
+          "id": "sol-5-case1",
+          "latex": "Case 1: $b-a=8 \\implies b=a+8$. 대입하면 $3(a+8)-2a=30 \\implies a=6$. 이때 $b=14$."
+        },
+        {
+          "id": "sol-5-case2",
+          "latex": "Case 2: $b-a=-8 \\implies b=a-8$. 대입하면 $3(a-8)-2a=30 \\implies a=54$."
+        },
+        {
+          "id": "sol-5-conclusion",
+          "latex": "$0 \\le a \\le 18$ 이므로 $a=54$는 불가능합니다. 따라서 $a=6, b=14$ 입니다."
+        },
+        {
+          "id": "sol-5-final-coords",
+          "latex": "$\\mathrm{O'}(6, 18), \\mathrm{F'}(14, 12)$"
+        }
+      ],
+      "graph_elements": [
+        {
+          "id": "graph-5-text",
+          "type": "drawMathText",
+          "args": [
+            "a=6, b=14 \\implies \\mathrm{O'}(6,18)",
+            10,
+            10,
+            "#50fa7b",
+            1.5,
+            "center"
+          ]
+        }
+      ],
+      "timedEvents": [
+        {
+          "startTime": 0,
+          "endTime": 2.47,
+          "highlight_ids": [
+            "sol-5-title"
+          ]
+        },
+        {
+          "startTime": 2.47,
+          "endTime": 7.29,
+          "highlight_ids": [
+            "sol-5-case1"
+          ]
+        },
+        {
+          "startTime": 7.29,
+          "endTime": 11.65,
+          "highlight_ids": [
+            "sol-5-case2"
+          ]
+        },
+        {
+          "startTime": 11.65,
+          "endTime": 17.53,
+          "highlight_ids": [
+            "sol-5-conclusion"
+          ]
+        },
+        {
+          "startTime": 17.53,
+          "endTime": 21.29,
+          "highlight_ids": [
+            "sol-5-final-coords",
+            "graph-5-text"
+          ]
+        }
+      ],
+      "clean_script": "이제 두 관계식을 연립하여 에이와 비를 구합니다. 비 마이너스 에이가 팔인 경우, 이를 두 번째 식에 대입하여 풀면 에이는 육, 비는 십사가 나옵니다. 비 마이너스 에이가 마이너스 팔인 경우, 같은 방법으로 풀면 에이는 오십사가 나옵니다. 점 오프라임은 정사각형 내부에 있어야 하므로 에이는 영과 십팔 사이의 값이어야 합니다. 따라서 에이는 육이 맞습니다. 최종적으로 오프라임은 육 콤마 십팔, 에프프라임은 십사 콤마 십이입니다."
+    },
+    {
+      "scene_id": 6,
+      "solution_steps": [
+        {
+          "id": "sol-6-title",
+          "latex": "5. 직선 PQ의 방정식 구하기",
+          "is_title": true
+        },
+        {
+          "id": "sol-6-midpoint",
+          "latex": "PQ는 OO'의 수직이등분선이므로 OO'의 중점을 지납니다. 중점 $M = (\\frac{0+6}{2}, \\frac{0+18}{2}) = (3, 9)$."
+        },
+        {
+          "id": "sol-6-slope",
+          "latex": "OO'의 기울기는 $\\frac{18}{6}=3$ 이므로, PQ의 기울기는 $-\\frac{1}{3}$ 입니다."
+        },
+        {
+          "id": "sol-6-equation",
+          "latex": "따라서 직선 PQ의 방정식은 $y - 9 = -\\frac{1}{3}(x-3)$"
+        },
+        {
+          "id": "sol-6-final-eq",
+          "latex": "$y = -\\frac{1}{3}x + 10$"
+        }
+      ],
+      "graph_elements": [
+        {
+          "id": "graph-6-base-axes",
+          "type": "drawAxes",
+          "args": [
+            0,
+            20,
+            0,
+            20,
+            2,
+            "x",
+            "y",
+            "#6272a4"
+          ]
+        },
+        {
+          "id": "graph-6-line-OOprime",
+          "type": "drawLine",
+          "args": [
+            0,
+            0,
+            6,
+            18,
+            "#ff79c6",
+            0.1,
+            true
+          ]
+        },
+        {
+          "id": "graph-6-midpoint",
+          "type": "drawPoint",
+          "args": [
+            3,
+            9,
+            "#f1fa8c",
+            0.3
+          ]
+        },
+        {
+          "id": "graph-6-label-midpoint",
+          "type": "drawMathText",
+          "args": [
+            "M(3,9)",
+            3.5,
+            8.5,
+            "#f1fa8c",
+            1
+          ]
+        },
+        {
+          "id": "graph-6-line-PQ",
+          "type": "drawLine",
+          "args": [
+            -3,
+            11,
+            18,
+            4,
+            "#50fa7b",
+            0.2
+          ]
+        },
+        {
+          "id": "graph-6-label-PQ",
+          "type": "drawMathText",
+          "args": [
+            "y = -\\frac{1}{3}x + 10",
+            12,
+            7,
+            "#50fa7b",
+            1.2
+          ]
+        }
+      ],
+      "timedEvents": [
+        {
+          "startTime": 0,
+          "endTime": 2.12,
+          "highlight_ids": [
+            "sol-6-title"
+          ]
+        },
+        {
+          "startTime": 2.12,
+          "endTime": 6.47,
+          "highlight_ids": [
+            "sol-6-midpoint",
+            "graph-6-midpoint"
+          ]
+        },
+        {
+          "startTime": 6.47,
+          "endTime": 10.35,
+          "highlight_ids": [
+            "sol-6-slope"
+          ]
+        },
+        {
+          "startTime": 10.35,
+          "endTime": 13.29,
+          "highlight_ids": [
+            "sol-6-equation"
+          ]
+        },
+        {
+          "startTime": 13.29,
+          "endTime": 15.88,
+          "highlight_ids": [
+            "sol-6-final-eq",
+            "graph-6-line-PQ",
+            "graph-6-label-PQ"
+          ]
+        }
+      ],
+      "clean_script": "이제 직선 피큐의 방정식을 구하겠습니다. 피큐는 선분 오오프라임의 수직이등분선입니다. 오오프라임의 중점은 삼 콤마 구이고, 오오프라임의 기울기는 삼이므로 피큐의 기울기는 마이너스 삼분의 일입니다. 따라서 기울기와 한 점을 이용하여 직선의 방정식을 세우면, 와이는 마이너스 삼분의 일 엑스 더하기 십이 됩니다."
+    },
+    {
+      "scene_id": 7,
+      "solution_steps": [
+        {
+          "id": "sol-7-title",
+          "latex": "6. 최종 답 구하기",
+          "is_title": true
+        },
+        {
+          "id": "sol-7-mn",
+          "latex": "직선의 방정식 $y=mx+n$과 비교하면, $m = -\\frac{1}{3}, n = 10$ 입니다."
+        },
+        {
+          "id": "sol-7-calc",
+          "latex": "구하고자 하는 값은 $6mn$ 입니다."
+        },
+        {
+          "id": "sol-7-answer",
+          "latex": "$6mn = 6 \\times (-\\frac{1}{3}) \\times 10 = -2 \\times 10 = -20$"
+        }
+      ],
+      "graph_elements": [
+        {
+          "id": "graph-7-text",
+          "type": "drawMathText",
+          "args": [
+            "6mn = 6(-\\frac{1}{3})(10) = -20",
+            10,
+            10,
+            "#f1fa8c",
+            1.8,
+            "center"
+          ]
+        }
+      ],
+      "timedEvents": [
+        {
+          "startTime": 0,
+          "endTime": 2,
+          "highlight_ids": [
+            "sol-7-title"
+          ]
+        },
+        {
+          "startTime": 2,
+          "endTime": 6.59,
+          "highlight_ids": [
+            "sol-7-mn"
+          ]
+        },
+        {
+          "startTime": 6.59,
+          "endTime": 8.47,
+          "highlight_ids": [
+            "sol-7-calc"
+          ]
+        },
+        {
+          "startTime": 8.47,
+          "endTime": 12.94,
+          "highlight_ids": [
+            "sol-7-answer",
+            "graph-7-text"
+          ]
+        }
+      ],
+      "clean_script": "문제에서 요구하는 답을 계산해봅시다. 직선의 방정식이 와이는 엠엑스 더하기 엔이므로, 엠은 마이너스 삼분의 일, 엔은 십입니다. 우리가 구해야 할 값은 육엠엔입니다. 따라서 육 곱하기 마이너스 삼분의 일 곱하기 십을 계산하면, 정답은 마이너스 이십입니다."
+    }
+  ],
+  "audioUrls": [
+    "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-1.mp3",
+    "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-2.mp3",
+    "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-3.mp3",
+    "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-4.mp3",
+    "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-5.mp3",
+    "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-6.mp3",
+    "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-7.mp3"
+  ]
+};
+const audioUrls = [
+  "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-1.mp3",
+  "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-2.mp3",
+  "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-3.mp3",
+  "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-4.mp3",
+  "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-5.mp3",
+  "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-6.mp3",
+  "https://raw.githubusercontent.com/sykaboom/triple-audio/main/audio/neulpureun-2023-1-2-mid-9/neulpureun-2023-1-2-mid-9-scene-7.mp3"
+];
+// ===================================================================================
+
+const ui = {
+  solution: document.getElementById('solution-wrapper'),
+  canvas: document.getElementById('canvas'),
+  audio: document.getElementById('audio-player'),
+  playPauseBtn: document.getElementById('play-pause-btn'),
+  progressBar: document.getElementById('progress-bar'),
+  timeDisplay: document.getElementById('time-display'),
+  timeline: document.getElementById('timeline')
+};
+
+let ctx, renderer;
+let currentSceneIndex = 0;
+let sceneStartTimes = [], totalDuration = 0;
+let solutionStepElements = [];
+let playerState = 'idle'; // idle, playing, paused, ended
+
+class CanvasRenderer {
+    constructor(ctx, {minX, maxX, minY, maxY}) {
+        this.ctx = ctx;
+        this.minX = minX; this.maxX = maxX; this.minY = minY; this.maxY = maxY;
+    }
+    
+    transform(x, y) {
+        const { width, height } = this.ctx.canvas;
+        const scaleX = width / (this.maxX - this.minX);
+        const scaleY = height / (this.maxY - this.minY);
+        const tx = (x - this.minX) * scaleX;
+        const ty = height - (y - this.minY) * scaleY;
+        return { tx, ty, scale: Math.min(scaleX, scaleY) };
+    }
+    
+    draw(elements, highlightedIds = []) {
+      this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+      if (!elements) return;
+      elements.forEach(el => {
+        const isHighlighted = highlightedIds.includes(el.id);
+        const originalColor = el.args[el.type.startsWith('drawPolygon') ? 2 : (el.type.startsWith('drawMathText') ? 3 : 2)];
+        const originalLw = el.args[el.type.startsWith('drawLine') ? 3 : (el.type.startsWith('drawPoint') ? 3 : -1)];
+
+        if (isHighlighted) {
+           if (el.type.startsWith('drawPolygon')) el.args[2] = 'var(--highlight-graph-color)';
+           else if (el.type.startsWith('drawMathText')) el.args[3] = 'var(--highlight-graph-color)';
+           else el.args[2] = 'var(--highlight-graph-color)';
+
+           if(el.type === 'drawLine') el.args[3] = (originalLw || 0.1) * 2;
+           if(el.type === 'drawPoint') el.args[3] = (originalLw || 0.25) * 1.5;
+        }
+        
+        if (typeof this[el.type] === 'function') this[el.type](...el.args);
+
+        if (isHighlighted) {
+           if (el.type.startsWith('drawPolygon')) el.args[2] = originalColor;
+           else if (el.type.startsWith('drawMathText')) el.args[3] = originalColor;
+           else el.args[2] = originalColor;
+
+           if(el.type === 'drawLine') el.args[3] = originalLw;
+           if(el.type === 'drawPoint') el.args[3] = originalLw;
+        }
+      });
+    }
+
+    drawAxes(xMin, xMax, yMin, yMax, step, xLabel, yLabel, color) {
+        this.ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--dracula-comment').trim();
+        this.ctx.lineWidth = 1;
+        this.ctx.font = `${0.8 * this.transform(0,0).scale}px Noto Sans KR`;
+        this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--dracula-comment').trim();
+        
+        const { tx: xOrigin } = this.transform(0, 0);
+        const { ty: yOrigin } = this.transform(0, 0);
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, yOrigin); this.ctx.lineTo(this.ctx.canvas.width, yOrigin);
+        this.ctx.moveTo(xOrigin, 0); this.ctx.lineTo(xOrigin, this.ctx.canvas.height);
+        this.ctx.stroke();
+    }
+
+    drawLine(x1, y1, x2, y2, color, lw, dashed = false) {
+        const { tx: tx1, ty: ty1, scale } = this.transform(x1, y1);
+        const { tx: tx2, ty: ty2 } = this.transform(x2, y2);
+        this.ctx.beginPath();
+        this.ctx.moveTo(tx1, ty1);
+        this.ctx.lineTo(tx2, ty2);
+        this.ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue(color.substring(4, color.length-1)) || color;
+        this.ctx.lineWidth = lw * scale;
+        if(dashed) this.ctx.setLineDash([5, 5]);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+    }
+
+    drawPoint(x, y, color, radius) {
+        const { tx, ty, scale } = this.transform(x, y);
+        this.ctx.beginPath();
+        this.ctx.arc(tx, ty, radius * scale, 0, 2 * Math.PI);
+        this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(color.substring(4, color.length-1)) || color;
+        this.ctx.fill();
+    }
+    
+    drawPolygon(points, fillColor, strokeColor, lw) {
+        if (points.length < 2) return;
+        const { scale } = this.transform(0,0);
+        this.ctx.beginPath();
+        const firstPoint = this.transform(points[0][0], points[0][1]);
+        this.ctx.moveTo(firstPoint.tx, firstPoint.ty);
+        for (let i = 1; i < points.length; i++) {
+            const { tx, ty } = this.transform(points[i][0], points[i][1]);
+            this.ctx.lineTo(tx, ty);
+        }
+        this.ctx.closePath();
+        this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(fillColor.substring(4, fillColor.length-1)) || fillColor;
+        this.ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue(strokeColor.substring(4, strokeColor.length-1)) || strokeColor;
+        this.ctx.lineWidth = lw * scale;
+        this.ctx.fill();
+        this.ctx.stroke();
+    }
+    
+    drawMathText(text, x, y, color, size, align = 'left') {
+        const { tx, ty, scale } = this.transform(x, y);
+        const svg = MathJax.tex2svg(text).firstElementChild;
+        const svgString = new XMLSerializer().serializeToString(svg);
+        const img = new Image();
+        const svg64 = btoa(svgString);
+        const b64Start = 'data:image/svg+xml;base64,';
+        const image64 = b64Start + svg64;
+        img.onload = () => {
+            this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(color.substring(4, color.length-1)) || color;
+            this.ctx.filter = `invert(100%) sepia(0%) saturate(7500%) hue-rotate(103deg) brightness(105%) contrast(101%))`;
+            const w = img.width * size * scale * 0.05;
+            const h = img.height * size * scale * 0.05;
+            let drawX = tx;
+            if (align === 'center') drawX = tx - w / 2;
+            else if (align === 'right') drawX = tx - w;
+            this.ctx.drawImage(img, drawX, ty - h/2, w, h);
+            this.ctx.filter = 'none';
+        };
+        img.src = image64;
+    }
+}
+
+const typeset = async (target) => { 
+  await MathJax.startup.promise; 
+  await MathJax.typesetPromise(target ? [target] : undefined); 
+};
+
+const setupCanvas = () => {
+    const wrapper = document.getElementById('graph-wrapper');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = wrapper.getBoundingClientRect();
+    ui.canvas.width = rect.width * dpr;
+    ui.canvas.height = rect.height * dpr;
+    ctx = ui.canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ui.canvas.style.width = `${rect.width}px`;
+    ui.canvas.style.height = `${rect.height}px`;
+
+    const { min_x, max_x, min_y, max_y } = problemData.metadata.graph_viewport || {min_x: -2, max_x: 20, min_y: -2, max_y: 20};
+    renderer = new CanvasRenderer(ctx, { minX: min_x, maxX: max_x, minY: min_y, maxY: max_y});
+};
+
+const playScene = (index) => {
+  if (index < 0 || index >= problemData.scenes.length) return;
+  currentSceneIndex = index;
+  playerState = 'playing';
+  ui.playPauseBtn.textContent = '❚❚';
+  
+  showSceneContent(index).then(() => {
+      ui.audio.src = audioUrls[index];
+      ui.audio.currentTime = 0;
+      ui.audio.play().catch(e => {
+          console.error("Audio play failed:", e);
+          playerState = 'paused';
+          ui.playPauseBtn.textContent = '▶';
+      });
+  });
+};
+
+const showSceneContent = async (index) => {
+  const scene = problemData.scenes[index];
+  ui.solution.innerHTML = "";
+  solutionStepElements = scene.solution_steps.map(step => {
+    const el = document.createElement("div");
+    el.id = step.id;
+    el.className = "solution-step" + (step.is_title ? " is-title" : "");
+    el.innerHTML = step.latex;
+    ui.solution.appendChild(el);
+    return el;
+  });
+  await typeset(ui.solution);
+  drawGraph(index);
+};
+
+const drawGraph = (index, highlightedIds = []) => {
+    const scene = problemData.scenes[index];
+    renderer.draw(scene.graph_elements, highlightedIds);
+};
+
+const updateHighlights = (currentTime) => {
+    const scene = problemData.scenes[currentSceneIndex];
+    if (!scene.timedEvents) return;
+
+    const sceneTime = currentTime - sceneStartTimes[currentSceneIndex];
+    const activeEvent = scene.timedEvents.find(event => sceneTime >= event.startTime && sceneTime < event.endTime);
+    const activeIds = activeEvent ? activeEvent.highlight_ids : [];
+
+    solutionStepElements.forEach(el => el.classList.toggle('highlighted', activeIds.includes(el.id)));
+    drawGraph(currentSceneIndex, activeIds);
+};
+
+const updateProgressBar = () => {
+    if (totalDuration > 0) {
+        const progress = (ui.audio.currentTime / totalDuration) * 100;
+        ui.progressBar.style.width = `${progress}%`;
+    }
+    updateHighlights(ui.audio.currentTime);
+    ui.timeDisplay.textContent = `${formatTime(ui.audio.currentTime)} / ${formatTime(totalDuration)}`;
+};
+
+const formatTime = (seconds) => {
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+};
+
+const precomputeTimings = async () => {
+    let cumulativeTime = 0;
+    const durations = await Promise.all(audioUrls.map(url => getAudioDuration(url)));
+    
+    durations.forEach(duration => {
+        sceneStartTimes.push(cumulativeTime);
+        cumulativeTime += duration;
+    });
+    totalDuration = cumulativeTime;
+    
+    // Set the audio source to the first scene to show total duration initially
+    if(audioUrls.length > 0) {
+        ui.audio.src = audioUrls[0];
+    }
+};
+
+const getAudioDuration = (url) => {
+    return new Promise(resolve => {
+        const tempAudio = new Audio(url);
+        tempAudio.addEventListener('loadedmetadata', () => {
+            resolve(tempAudio.duration);
+        });
+        tempAudio.addEventListener('error', () => {
+            console.error(`Failed to load metadata for ${url}`);
+            resolve(10); // fallback duration
+        });
+    });
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+    setupCanvas();
+    window.addEventListener('resize', () => {
+      setupCanvas();
+      drawGraph(currentSceneIndex);
+    });
+
+    if (!problemData || !audioUrls || audioUrls.length === 0) {
+      ui.solution.innerHTML = `<div style="padding: 20px; text-align: center;">Error: Data not loaded.</div>`;
+      return;
+    }
+
+    await precomputeTimings();
+    await showSceneContent(0);
+    updateProgressBar();
+    
+    ui.playPauseBtn.addEventListener('click', () => {
+        if (playerState === 'playing') {
+            ui.audio.pause();
+        } else if (playerState === 'paused' || playerState === 'idle') {
+            if (ui.audio.src) ui.audio.play(); else playScene(0);
+        } else if (playerState === 'ended') {
+            playScene(0);
+        }
+    });
+
+    ui.timeline.addEventListener('click', (e) => {
+        const rect = ui.timeline.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const percentage = clickX / rect.width;
+        const seekTime = totalDuration * percentage;
+        
+        let targetSceneIndex = sceneStartTimes.findIndex((startTime, i) => 
+            seekTime >= startTime && (i === sceneStartTimes.length - 1 || seekTime < sceneStartTimes[i+1])
+        );
+
+        if (targetSceneIndex === -1) targetSceneIndex = 0;
+        
+        if (targetSceneIndex !== currentSceneIndex) {
+            playScene(targetSceneIndex);
+        }
+        ui.audio.currentTime = seekTime;
+    });
+
+    ui.audio.addEventListener('play', () => { playerState = 'playing'; ui.playPauseBtn.textContent = '❚❚'; });
+    ui.audio.addEventListener('pause', () => { playerState = 'paused'; ui.playPauseBtn.textContent = '▶'; });
+    ui.audio.addEventListener('timeupdate', updateProgressBar);
+    ui.audio.addEventListener('ended', () => {
+        if (currentSceneIndex < problemData.scenes.length - 1) {
+            playScene(currentSceneIndex + 1);
+        } else {
+            playerState = 'ended';
+            ui.playPauseBtn.textContent = '↻';
+        }
+    });
+});
+</script>
+</body>
+</html>
